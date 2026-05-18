@@ -21,6 +21,33 @@ message RegisterResponse {
   int32 collect_interval = 2;
   repeated string enabled_items = 3;
   string server_time = 4;
+  // 系统详细信息
+  SystemInfo system_info = 5;
+  // 分配的告警模板
+  repeated string assigned_templates = 6;
+}
+
+// 系统详细信息
+message SystemInfo {
+  string hostname = 1;
+  string os_type = 2;
+  string os_version = 3;
+  string os_arch = 4;
+  int32 cpu_cores = 5;
+  int64 total_memory_bytes = 6;
+  int64 total_disk_bytes = 7;
+  string agent_version = 8;
+  repeated string network_interfaces = 9;
+  repeated DiskInfo disks = 10;
+}
+
+// 磁盘信息
+message DiskInfo {
+  string mount_point = 1;
+  string filesystem = 2;
+  int64 total_bytes = 3;
+  int64 used_bytes = 4;
+  int64 available_bytes = 5;
 }
 
 message Metric {

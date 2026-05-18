@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
+import java.sql.Timestamp;
 import java.util.List;
 
 @Slf4j
@@ -24,7 +25,7 @@ public class MetricBatchWriter {
 
         jdbcTemplate.batchUpdate(sql, points, 500,
                 (PreparedStatement ps, MetricPoint point) -> {
-                    ps.setObject(1, point.ts());
+                    ps.setTimestamp(1, Timestamp.from(point.ts()));
                     ps.setString(2, point.nodeId());
                     ps.setString(3, point.serviceId());
                     ps.setString(4, point.itemKey());

@@ -75,8 +75,27 @@ public class ArchitectureService {
 
     @Transactional
     public ArchitectureNode addNode(ArchitectureNode node) {
+        // 验证节点类型和引用
+        validateNodeReference(node);
         node.setTreePath(computeTreePath(node));
         return archRepository.save(node);
+    }
+    
+    /**
+     * 验证节点引用是否存在
+     */
+    private void validateNodeReference(ArchitectureNode node) {
+        if (node.getRefId() != null) {
+            if (node.getNodeType() == ArchitectureNodeType.NODE) {
+                if (!hostRepository.existsById(node.getRefId())) {
+                    throw new RuntimeException("Host node not found: " + node.getRefId());
+                }
+            } else if (node.getNodeType() == ArchitectureNodeType.SERVICE) {
+                if (!serviceRepository.existsById(node.getRefId())) {
+                    throw new RuntimeException("Monitored service not found: " + node.getRefId());
+                }
+            }
+        }
     }
 
     private String computeTreePath(ArchitectureNode node) {
