@@ -1,0 +1,208 @@
+services:
+  # ============================================
+  # Infrastructure Services
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: monitor-postgres
+    environment:
+      POSTGRES_DB: monitor
+      POSTGRES_USER: monitor
+      POSTGRES_PASSWORD: monitor123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monitor -d monitor"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: monitor-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: monitor-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+  # ============================================
+  # Microservices
+  # ============================================
+  monitor-gateway:
+    build:
+      context: .
+      dockerfile: monitor-gateway/Dockerfile
+    container_name: monitor-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: "8080"
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_CLOUD_GATEWAY_ROUTES_0_ID: monitor-server
+      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://monitor-server:8081
+      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: Path=/api/**
+      SPRING_CLOUD_GATEWAY_ROUTES_1_ID: monitor-server-ws
+      SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://monitor-server:8081
+      SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: Path=/ws/**
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+  monitor-server:
+    build:
+      context: .
+      dockerfile: monitor-server/Dockerfile
+    container_name: monitor-server
+    ports:
+      - "8081:8081"
+    environment:
+      SERVER_PORT: "8081"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/monitor
+      SPRING_DATASOURCE_USERNAME: monitor
+      SPRING_DATASOURCE_PASSWORD: monitor123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_RABBITMQ_HOST: rabbitmq
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+  monitor-collector:
+    build:
+      context: .
+      dockerfile: monitor-collector/Dockerfile
+    container_name: monitor-collector
+    ports:
+      - "8082:8082"
+      - "9090:9090"
+    environment:
+      SERVER_PORT: "8082"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/monitor
+      SPRING_DATASOURCE_USERNAME: monitor
+      SPRING_DATASOURCE_PASSWORD: monitor123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_RABBITMQ_HOST: rabbitmq
+      GRPC_SERVER_PORT: "9090"
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+  monitor-alerter:
+    build:
+      context: .
+      dockerfile: monitor-alerter/Dockerfile
+    container_name: monitor-alerter
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: "8083"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/monitor
+      SPRING_DATASOURCE_USERNAME: monitor
+      SPRING_DATASOURCE_PASSWORD: monitor123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_RABBITMQ_HOST: rabbitmq
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+  monitor-agent:
+    build:
+      context: .
+      dockerfile: monitor-agent/Dockerfile
+    container_name: monitor-agent
+    environment:
+      # gRPC Collector 连接配置（支持 Docker 和 K8s）
+      AGENT_COLLECTOR_HOST: monitor-collector
+      AGENT_COLLECTOR_PORT: "9090"
+      # Agent 标识配置（K8s 中可通过 downward API 设置）
+      AGENT_AGENT_ID: docker-agent
+      AGENT_HEARTBEAT_INTERVAL: "5"
+    depends_on:
+      - monitor-collector
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+  monitor-ui:
+    build:
+      context: ./monitor-ui
+      dockerfile: Dockerfile
+    container_name: monitor-ui
+    ports:
+      - "3000:80"
+    environment:
+      GATEWAY_HOST: monitor-gateway
+      GATEWAY_PORT: "8080"
+    depends_on:
+      - monitor-gateway
+    networks:
+      - monitor-net
+    restart: unless-stopped
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  postgres_data:
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  monitor-net:
+    driver: bridge

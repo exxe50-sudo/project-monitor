@@ -2,14 +2,15 @@ package com.monitor.agent.collector.impl;
 
 import com.monitor.agent.collector.Collector;
 import com.monitor.agent.grpc.proto.Metric;
-import org.springframework.stereotype.Component;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Component
+/**
+ * CPU 指标采集器
+ */
 public class CpuCollector implements Collector {
     private final SystemInfo si = new SystemInfo();
     private long[] prevTicks;

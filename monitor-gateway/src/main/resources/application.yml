@@ -7,11 +7,11 @@ spring:
     gateway:
       routes:
         - id: monitor-server
-          uri: http://localhost:8081
+          uri: http://monitor-server:8081
           predicates:
             - Path=/api/**
         - id: monitor-server-ws
-          uri: http://localhost:8081
+          uri: http://monitor-server:8081
           predicates:
             - Path=/ws/**
       default-filters:

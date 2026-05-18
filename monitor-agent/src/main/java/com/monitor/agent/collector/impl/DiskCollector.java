@@ -2,14 +2,12 @@ package com.monitor.agent.collector.impl;
 
 import com.monitor.agent.collector.Collector;
 import com.monitor.agent.grpc.proto.Metric;
-import org.springframework.stereotype.Component;
 import oshi.SystemInfo;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-@Component
 public class DiskCollector implements Collector {
     private final SystemInfo si = new SystemInfo();
 

@@ -67,7 +67,7 @@ public class MetricReportServiceImpl extends AgentServiceGrpc.AgentServiceImplBa
     }
 
     @Override
-    public StreamObserver<Heartbeat> heartbeat(StreamObserver<HeartbeatAck> responseObserver) {
+    public StreamObserver<Heartbeat> heartbeatStream(StreamObserver<HeartbeatAck> responseObserver) {
         return new StreamObserver<Heartbeat>() {
             @Override
             public void onNext(Heartbeat heartbeat) {

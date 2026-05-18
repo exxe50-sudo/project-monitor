@@ -2,13 +2,11 @@ package com.monitor.agent.collector.impl;
 
 import com.monitor.agent.collector.Collector;
 import com.monitor.agent.grpc.proto.Metric;
-import org.springframework.stereotype.Component;
 import oshi.SystemInfo;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Component
 public class MemoryCollector implements Collector {
     private final SystemInfo si = new SystemInfo();
 
@@ -30,7 +28,12 @@ public class MemoryCollector implements Collector {
 
         // Swap
         var swap = mem.getVirtualMemory();
-        double swapUsedPct = Math.round((1.0 - (double) swap.getSwapFree() / swap.getSwapTotal()) * 10000.0) / 100.0;
+        long swapTotal = swap.getSwapTotal();
+        long swapAvailable = swap.getSwapUsed();
+        double swapUsedPct = 0.0;
+        if (swapTotal > 0) {
+            swapUsedPct = Math.round((double) swapAvailable / swapTotal * 10000.0) / 100.0;
+        }
         metrics.add(Metric.newBuilder().setItemKey("system.swap.used.pct").setValue(swapUsedPct).build());
 
         return metrics;
