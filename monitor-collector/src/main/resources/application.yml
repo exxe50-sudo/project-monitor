@@ -1,0 +1,31 @@
+server:
+  port: 8082
+spring:
+  application:
+    name: monitor-collector
+  datasource:
+    url: jdbc:postgresql://localhost:5432/monitor
+    username: monitor
+    password: monitor123
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 10
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+grpc:
+  server:
+    port: 9090
+app:
+  collector:
+    buffer-size: 10000
+    flush-interval-ms: 1000
+    batch-size: 500
+    heartbeat-timeout-seconds: 15
